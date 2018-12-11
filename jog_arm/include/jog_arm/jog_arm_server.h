@@ -88,11 +88,12 @@ struct jog_arm_shared
 // ROS params to be read
 struct jog_arm_parameters
 {
-  std::string move_group_name, joint_topic, cartesian_command_in_topic, command_frame, command_out_topic, planning_frame,
-      warning_topic, joint_command_in_topic, command_in_type;
+  std::string move_group_name, joint_topic, command_in_topic, command_frame, command_out_topic, planning_frame,
+      warning_topic, joint_command_in_topic;
   double linear_scale, rotational_scale, joint_scale, singularity_threshold, hard_stop_singularity_threshold,
       low_pass_filter_coeff, publish_period, publish_delay, incoming_command_timeout, joint_limit_margin;
-  bool gazebo, collision_check, publish_joint_positions, publish_joint_velocities;
+  bool gazebo, collision_check, collision_check_synchronous, publish_joint_positions, publish_joint_velocities,
+      calculate_with_zero_deltas;
 };
 
 /**
@@ -112,7 +113,7 @@ private:
   void deltaJointCmdCB(const jog_msgs::JogJointConstPtr& msg);
   void jointsCB(const sensor_msgs::JointStateConstPtr& msg);
 
-  bool readParameters(ros::NodeHandle& n);
+  int readParameters(ros::NodeHandle& n);
 
   // Jogging calculation thread
   static void* jogCalcThread(void* thread_id);
@@ -201,7 +202,7 @@ protected:
   // Parse the incoming joint msg for the joints of our MoveGroup
   bool updateJoints();
 
-  Eigen::VectorXd scaleCartesianCommand(const geometry_msgs::TwistStamped& command) const;
+  Eigen::VectorXd scaleCommand(const geometry_msgs::TwistStamped& command) const;
 
   Eigen::VectorXd scaleJointCommand(const jog_msgs::JogJoint& command) const;
 
@@ -235,6 +236,8 @@ protected:
 
   bool checkIfImminentCollision(jog_arm_shared& shared_variables);
 
+  bool checkIfSolutionCollides(sensor_msgs::JointState joint_state);
+
   trajectory_msgs::JointTrajectory composeOutgoingMessage(sensor_msgs::JointState& joint_state,
                                                           const ros::Time& stamp) const;
 
@@ -247,6 +250,14 @@ protected:
   const robot_state::JointModelGroup* joint_model_group_;
 
   robot_state::RobotStatePtr kinematic_state_;
+
+  planning_scene::PlanningScenePtr planning_scene_;
+
+  collision_detection::CollisionRequest collision_request_;
+
+  collision_detection::CollisionResult collision_result_;
+
+  moveit::planning_interface::PlanningSceneInterface planning_scene_interface_;
 
   sensor_msgs::JointState jt_state_, orig_jts_, last_jts_;
   trajectory_msgs::JointTrajectory new_traj_;
