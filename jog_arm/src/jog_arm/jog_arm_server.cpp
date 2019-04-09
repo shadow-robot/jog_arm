@@ -284,6 +284,7 @@ JogCalcs::JogCalcs(const jog_arm_parameters& parameters, jog_arm_shared& shared_
   {
     velocity_filters_.emplace_back(parameters_.low_pass_filter_coeff);
     position_filters_.emplace_back(parameters_.low_pass_filter_coeff);
+    ROS_WARN_STREAM("Joint name: " << jt_state_.name[i]);
   }
 
   // Initialize the position filters to initial robot joints
@@ -469,19 +470,30 @@ bool JogCalcs::cartesianJogCalcs(const geometry_msgs::TwistStamped& cmd, jog_arm
   kinematic_state_->setVariableValues(jt_state_);
   orig_jts_ = jt_state_;
 
+  ROS_INFO_STREAM("Delta_x: " << delta_x);
+
   // Convert from cartesian commands to joint commands
   Eigen::MatrixXd old_jacobian = kinematic_state_->getJacobian(joint_model_group_);
-  Eigen::VectorXd delta_theta = pseudoInverse(old_jacobian) * delta_x;
+
+  ROS_INFO_STREAM("Old jacobian: " << old_jacobian);
+  Eigen::MatrixXd pseudo_inv = pseudoInverse(old_jacobian.block(0,0,old_jacobian.cols(), old_jacobian.cols()));
+  ROS_INFO_STREAM("PseudoInv: " << pseudo_inv);
+  
+  const Eigen::VectorXd delta_x_partial(delta_x.block(0,0,old_jacobian.cols(),1));
+  ROS_INFO_STREAM("New delta_x: " << delta_x_partial);
+  Eigen::VectorXd delta_theta = pseudo_inv * delta_x;
+  ROS_INFO_STREAM("DeltaTheta: " << delta_theta);
 
   if (!addJointIncrements(jt_state_, delta_theta))
     return 0;
-
+  ROS_INFO_STREAM("JointState: " << jt_state_);
   // Include a velocity estimate for velocity-controlled robots
   Eigen::VectorXd joint_vel(delta_theta / parameters_.publish_period);
 
-  lowPassFilterVelocities(joint_vel);
-  lowPassFilterPositions();
+  // lowPassFilterVelocities(joint_vel);
+  // lowPassFilterPositions();
 
+  ROS_INFO_STREAM("JointState after low pass: " << jt_state_);
   // apply several checks to see if new joint state is valid
   kinematic_state_->setVariableValues(jt_state_);
   Eigen::MatrixXd jacobian = kinematic_state_->getJacobian(joint_model_group_);
@@ -489,18 +501,19 @@ bool JogCalcs::cartesianJogCalcs(const geometry_msgs::TwistStamped& cmd, jog_arm
   const ros::Time next_time = ros::Time::now() + ros::Duration(parameters_.publish_period);
   new_traj_ = composeOutgoingMessage(jt_state_, next_time);
 
-  if (!checkIfImminentCollision(shared_variables) ||
-      !verifyJacobianIsWellConditioned(old_jacobian, delta_theta, jacobian, new_traj_) ||
-      !checkIfJointsWithinBounds(new_traj_) ||
-      (parameters_.collision_check && parameters_.collision_check_synchronous &&
-      !checkIfSolutionCollides(jt_state_, shared_variables)))
-  {
-    avoidIssue(new_traj_);
-    publishWarning(true);
-  }
-  else
+  // if (!checkIfImminentCollision(shared_variables) ||
+  //     !verifyJacobianIsWellConditioned(old_jacobian, delta_theta, jacobian, new_traj_) ||
+  //     !checkIfJointsWithinBounds(new_traj_) ||
+  //     (parameters_.collision_check && parameters_.collision_check_synchronous &&
+  //     !checkIfSolutionCollides(jt_state_, shared_variables)))
+  // {
+  //   avoidIssue(new_traj_);
+  //   publishWarning(true);
+  // }
+  // else
     publishWarning(false);
 
+  ROS_INFO_STREAM("New traj: " << new_traj_);
   // If using Gazebo simulator, insert redundant points
   if (parameters_.gazebo)
   {
@@ -614,6 +627,7 @@ void JogCalcs::lowPassFilterPositions()
     // Check for nan's
     if (std::isnan(jt_state_.position[i]))
     {
+      ROS_WARN_STREAM("LowPassFilterPosition isNaN. Joint: " << i);
       jt_state_.position[i] = orig_jts_.position[i];
       jt_state_.velocity[i] = 0.;
     }
