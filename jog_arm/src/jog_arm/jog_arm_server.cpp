@@ -476,10 +476,10 @@ bool JogCalcs::cartesianJogCalcs(const geometry_msgs::TwistStamped& cmd, jog_arm
   Eigen::MatrixXd old_jacobian = kinematic_state_->getJacobian(joint_model_group_);
 
   ROS_INFO_STREAM("Old jacobian: " << old_jacobian);
-  Eigen::MatrixXd pseudo_inv = pseudoInverse(old_jacobian.block(0,0,old_jacobian.cols(), old_jacobian.cols()));
+  Eigen::MatrixXd pseudo_inv = pseudoInverse(old_jacobian.block(0,0,3, old_jacobian.cols()));
   ROS_INFO_STREAM("PseudoInv: " << pseudo_inv);
   
-  const Eigen::VectorXd delta_x_partial(delta_x.block(0,0,old_jacobian.cols(),1));
+  const Eigen::VectorXd delta_x_partial(delta_x.block(0,0,3,1));
   ROS_INFO_STREAM("New delta_x: " << delta_x_partial);
   Eigen::VectorXd delta_theta = pseudo_inv * delta_x;
   ROS_INFO_STREAM("DeltaTheta: " << delta_theta);
