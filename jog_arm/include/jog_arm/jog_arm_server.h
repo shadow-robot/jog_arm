@@ -91,7 +91,8 @@ struct jog_arm_parameters
   std::string move_group_name, joint_topic, command_in_topic, command_frame, command_out_topic, planning_frame,
       warning_topic, joint_command_in_topic;
   double linear_scale, rotational_scale, joint_scale, singularity_threshold, hard_stop_singularity_threshold,
-      low_pass_filter_coeff, publish_period, publish_delay, incoming_command_timeout, joint_limit_margin;
+      low_pass_filter_coeff, publish_period, publish_delay, incoming_command_timeout, joint_limit_margin,
+      traj_cmd_time_from_start;
   bool gazebo, collision_check, collision_check_synchronous, publish_joint_positions, publish_joint_velocities,
       calculate_with_zero_deltas;
 };
