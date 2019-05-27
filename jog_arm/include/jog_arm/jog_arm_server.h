@@ -48,6 +48,8 @@
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/robot_state/robot_state.h>
+#include <moveit/robot_state/conversions.h>
+#include <moveit_msgs/DisplayRobotState.h>
 #include <rosparam_shortcuts/rosparam_shortcuts.h>
 #include <sensor_msgs/JointState.h>
 #include <sensor_msgs/Joy.h>
@@ -89,7 +91,7 @@ struct jog_arm_shared
 struct jog_arm_parameters
 {
   std::string move_group_name, joint_topic, command_in_topic, command_frame, command_out_topic, planning_frame,
-      warning_topic, joint_command_in_topic;
+      warning_topic, joint_command_in_topic, solution_out_topic;
   double linear_scale, rotational_scale, joint_scale, singularity_threshold, hard_stop_singularity_threshold,
       low_pass_filter_coeff, publish_period, publish_delay, incoming_command_timeout, joint_limit_margin,
       traj_cmd_time_from_start;
@@ -237,7 +239,7 @@ protected:
 
   bool checkIfImminentCollision(jog_arm_shared& shared_variables);
 
-  bool checkIfSolutionCollides(sensor_msgs::JointState joint_state);
+  bool checkIfSolutionCollides(sensor_msgs::JointState joint_state, jog_arm_shared& shared_variables);
 
   trajectory_msgs::JointTrajectory composeOutgoingMessage(sensor_msgs::JointState& joint_state,
                                                           const ros::Time& stamp) const;
@@ -268,7 +270,7 @@ protected:
   std::vector<jog_arm::LowPassFilter> velocity_filters_;
   std::vector<jog_arm::LowPassFilter> position_filters_;
 
-  ros::Publisher warning_pub_;
+  ros::Publisher warning_pub_, solution_pub_;
 
   jog_arm_parameters parameters_;
 };
