@@ -486,7 +486,7 @@ bool JogCalcs::cartesianJogCalcs(const geometry_msgs::TwistStamped& cmd, jog_arm
   kinematic_state_->setVariableValues(jt_state_);
   Eigen::MatrixXd jacobian = kinematic_state_->getJacobian(joint_model_group_);
 
-  const ros::Time next_time = ros::Time::now() + ros::Duration(parameters_.publish_period);
+  const ros::Time next_time = ros::Time::now() + ros::Duration(parameters_.publish_delay);
   new_traj_ = composeOutgoingMessage(jt_state_, next_time);
 
   if (!checkIfImminentCollision(shared_variables) ||
@@ -645,7 +645,7 @@ trajectory_msgs::JointTrajectory JogCalcs::composeOutgoingMessage(sensor_msgs::J
   new_jt_traj.joint_names = joint_state.name;
 
   trajectory_msgs::JointTrajectoryPoint point;
-  point.time_from_start = ros::Duration(parameters_.publish_period);
+  point.time_from_start = ros::Duration(parameters_.traj_cmd_time_from_start);
   if (parameters_.publish_joint_positions)
     point.positions = joint_state.position;
   if (parameters_.publish_joint_velocities)
@@ -1035,6 +1035,7 @@ int JogROSInterface::readParameters(ros::NodeHandle& n)
   error += !rosparam_shortcuts::get("", n, parameter_ns + "/publish_joint_positions", ros_parameters_.publish_joint_positions);
   error += !rosparam_shortcuts::get("", n, parameter_ns + "/publish_joint_velocities", ros_parameters_.publish_joint_velocities);
   error += !rosparam_shortcuts::get("", n, parameter_ns + "/calculate_with_zero_deltas", ros_parameters_.calculate_with_zero_deltas);
+  error += !rosparam_shortcuts::get("", n, parameter_ns + "/traj_cmd_time_from_start", ros_parameters_.traj_cmd_time_from_start);
 
   rosparam_shortcuts::shutdownIfError(parameter_ns, error);
 
